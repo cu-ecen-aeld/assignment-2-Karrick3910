@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # finder.sh - Script to find files and count matching lines
 # Usage: finder.sh <filesdir> <searchstr>
 

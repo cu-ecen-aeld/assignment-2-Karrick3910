@@ -12,12 +12,30 @@ bool do_system(const char *cmd)
 
 /*
  * TODO  add your code here
- *  Call the system() function with the command set in the cmd
+ *   Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
 
-    return true;
+    // Call system() to execute the command
+    // system() returns -1 on error, or the exit status of the command
+    int result = system(cmd);
+    
+    // Check if system() call itself failed
+    if (result == -1) {
+        // system() failed to execute
+        return false;
+    }
+    
+    // Check if the command executed successfully (exit status 0)
+    // WIFEXITED checks if child terminated normally
+    // WEXITSTATUS gets the exit status
+    if (WIFEXITED(result) && WEXITSTATUS(result) == 0) {
+        return true;
+    }
+    
+    // Command failed or returned non-zero exit status
+    return false;
 }
 
 /**
@@ -59,9 +77,47 @@ bool do_exec(int count, ...)
  *
 */
 
-    va_end(args);
+    // Fork a child process
+    pid_t pid = fork();
+    
+    if (pid == -1) 
+    {
+        // Fork failed
+        perror("fork");
+        va_end(args);
+        return false;
+    }
+    
+    if (pid == 0) 
+    {
+        // Child process: execute the command
+        // execv replaces the current process image with a new process
+        // command[0] is the full path to the executable
+        // command is the array of arguments (including command name as first element)
+        execv(command[0], command);
+        
+        // If execv returns, it failed
+        perror("execv");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Parent process: wait for child to complete
+    int status;
 
-    return true;
+    if (waitpid(pid, &status, 0) == -1) 
+    {
+        perror("waitpid"); // waitpid failed
+        va_end(args);
+        return false;
+    }
+    
+    va_end(args);
+    
+    // Check if child terminated normally and with exit status 0
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) return true;
+    
+    // Command failed or returned non-zero exit status
+    return false;
 }
 
 /**
@@ -93,7 +149,68 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
+    // Fork a child process
+    pid_t pid = fork();
+    
+    if (pid == -1) 
+    {
+        // Fork failed
+        perror("fork");
+        va_end(args);
+        return false;
+    }
+    
+    if (pid == 0) 
+    {
+        // Child process: redirect stdout and execute command
+        
+        // Open the output file for writing
+        // O_WRONLY: write only, O_CREAT: create if doesn't exist, O_TRUNC: truncate to 0 length
+        // 0644: file permissions (rw-r--r--)
+        int fd = open(outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        
+        if (fd == -1) 
+        {
+            // Failed to open output file
+            perror("open");
+            exit(EXIT_FAILURE);
+        }
+        
+        // Redirect stdout (file descriptor 1) to the output file
+        // dup2 makes fd 1 (stdout) point to the same file as fd
+        if (dup2(fd, STDOUT_FILENO) == -1) 
+        {
+            perror("dup2");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+        
+        // Close the original file descriptor as we've duplicated it to stdout
+        close(fd);
+        
+        // Execute the command (stdout is now redirected to the file)
+        execv(command[0], command);
+        
+        // If execv returns, it failed
+        perror("execv");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Parent process: wait for child to complete
+    int status;
+    if (waitpid(pid, &status, 0) == -1) 
+    {
+        // waitpid failed
+        perror("waitpid");
+        va_end(args);
+        return false;
+    }
+    
     va_end(args);
-
-    return true;
+    
+    // Check if child terminated normally and with exit status 0
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) return true;
+    
+    // Command failed or returned non-zero exit status
+    return false;
 }

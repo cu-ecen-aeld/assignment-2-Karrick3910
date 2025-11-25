@@ -98,7 +98,7 @@ rm -rf "${WRITEDIR}"
 #
 # Read assignment type from configuration file
 #------------------------------------------------------------------------------
-assignment=`cat ../conf/assignment.txt`
+assignment=`cat conf/assignment.txt`
 
 if [ $assignment != 'assignment1' ]
 then
@@ -132,9 +132,9 @@ fi
 # Clean and rebuild the writer C application to ensure we're testing
 # the latest version with native compilation (not cross-compiled)
 #------------------------------------------------------------------------------
-echo "Removing the old writer utility and compiling as a native application"
-make clean  # Remove old build artifacts (writer executable, .o files)
-make        # Compile writer.c with native gcc (no CROSS_COMPILE)
+# echo "Removing the old writer utility and compiling as a native application"
+# make clean  # Remove old build artifacts (writer executable, .o files)
+# make        # Compile writer.c with native gcc (no CROSS_COMPILE)
 
 #------------------------------------------------------------------------------
 # 📝 TEST FILE CREATION LOOP  
